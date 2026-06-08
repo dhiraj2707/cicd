@@ -1,19 +1,53 @@
 pipeline {
     agent any
 
+    environment {
+        IMAGE_NAME = "dhiraj2707/cicd-demo"
+        IMAGE_TAG = "${BUILD_NUMBER}"
+        KUBECONFIG = "/var/jenkins_home/kubeconfig"
+    }
+
     stages {
 
         stage('Checkout') {
             steps {
-                echo 'Repository checked out'
+                git branch: 'main',
+                    url: 'https://github.com/dhiraj2707/cicd.git'
             }
         }
 
-        stage('Deploy to Kubernetes') {
+        stage('Docker Build') {
             steps {
                 sh '''
-                export KUBECONFIG=/var/jenkins_home/kubeconfig
+                docker build \
+                -t $IMAGE_NAME:$IMAGE_TAG \
+                -t $IMAGE_NAME:latest .
+                '''
+            }
+        }
 
+        stage('Docker Push') {
+            steps {
+                withCredentials([
+                    usernamePassword(
+                        credentialsId: 'dockerhub-creds',
+                        usernameVariable: 'DOCKER_USER',
+                        passwordVariable: 'DOCKER_PASS'
+                    )
+                ]) {
+                    sh '''
+                    echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin
+
+                    docker push $IMAGE_NAME:$IMAGE_TAG
+                    docker push $IMAGE_NAME:latest
+                    '''
+                }
+            }
+        }
+
+        stage('Deploy') {
+            steps {
+                sh '''
                 kubectl apply -f deployment.yaml
                 kubectl apply -f service.yaml
                 '''
@@ -23,8 +57,6 @@ pipeline {
         stage('Verify') {
             steps {
                 sh '''
-                export KUBECONFIG=/var/jenkins_home/kubeconfig
-
                 kubectl get pods
                 kubectl get svc
                 '''
