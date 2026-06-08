@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     environment {
-        IMAGE_NAME = "dhiraj2707/cicd-demo"
+        IMAGE_NAME = "bhau2707/cicd-demo"
         IMAGE_TAG = "${BUILD_NUMBER}"
         KUBECONFIG = "/var/jenkins_home/kubeconfig"
     }
